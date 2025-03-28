@@ -7,7 +7,7 @@
 @import "02-tools/mixins";
 @import "02-tools/functions";
 
-@import "03-generic/breakpoints";
+@import "03-generic/breakpoints"; // Ensure the file exists or remove this line if unnecessary
 
 // Add relevant styles from "04-elements/misc"
 b,
