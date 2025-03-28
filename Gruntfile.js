@@ -1544,446 +1544,431 @@ module.exports = function (grunt) {
 				}
 			});
 		}
-	});
-
-	grunt.registerTask('copy:block-json', 'Copies block.json file contents to block-json.php.', function () {
-		var blocks = {};
-		grunt.file.recurse(SOURCE_DIR + 'wp-includes/blocks', function (abspath, rootdir, subdir, filename) {
-			if (/^block\.json$/.test(filename)) {
-				blocks[subdir] = grunt.file.readJSON(abspath);
-			}
-		});
-		grunt.file.write(
-			SOURCE_DIR + 'wp-includes/blocks/blocks-json.php',
-			'<?php return ' + json2php.make({
-				linebreak: '\n',
-				indent: '  ',
-				shortArraySyntax: false
-			})(blocks) + ';'
+// Removed duplicate definition of 'copy:block-json' to avoid conflicts.
 		);
-	});
+});
 
-	grunt.registerTask('copy:js', [
-		'copy:npm-packages',
-		'copy:vendor-js',
-		'copy:admin-js',
-		'copy:includes-js'
-	]);
+grunt.registerTask('copy:js', [
+	'copy:npm-packages',
+	'copy:vendor-js',
+	'copy:admin-js',
+	'copy:includes-js'
+]);
 
-	grunt.registerTask('uglify:all', [
-		'uglify:core',
-		'uglify:jquery-ui',
-		'uglify:imgareaselect',
-		'uglify:jqueryform',
-		'uglify:moment'
-	]);
+grunt.registerTask('uglify:all', [
+	'uglify:core',
+	'uglify:jquery-ui',
+	'uglify:imgareaselect',
+	'uglify:jqueryform',
+	'uglify:moment'
+]);
 
-	grunt.registerTask('build:webpack', [
-		'clean:webpack-assets',
-		'webpack:prod',
-		'webpack:dev',
-		'clean:interactivity-assets',
-	]);
+grunt.registerTask('build:webpack', [
+	'clean:webpack-assets',
+	'webpack:prod',
+	'webpack:dev',
+	'clean:interactivity-assets',
+]);
 
-	grunt.registerTask('build:js', [
-		'clean:js',
-		'build:webpack',
-		'copy:js',
-		'file_append',
-		'uglify:all',
-		'concat:tinymce',
-		'concat:emoji'
-	]);
+grunt.registerTask('build:js', [
+	'clean:js',
+	'build:webpack',
+	'copy:js',
+	'file_append',
+	'uglify:all',
+	'concat:tinymce',
+	'concat:emoji'
+]);
 
-	grunt.registerTask('build:css', [
-		'clean:css',
-		'copy:wp-admin-css-compat-rtl',
-		'copy:wp-admin-css-compat-min',
-		'cssmin:core',
-		'colors',
-		'rtl',
-		'cssmin:rtl',
-		'cssmin:colors',
-		'usebanner'
-	]);
+grunt.registerTask('build:css', [
+	'clean:css',
+	'copy:wp-admin-css-compat-rtl',
+	'copy:wp-admin-css-compat-min',
+	'cssmin:core',
+	'colors',
+	'rtl',
+	'cssmin:rtl',
+	'cssmin:colors',
+	'usebanner'
+]);
 
-	grunt.registerTask('certificates:update', 'Updates the Composer package responsible for root certificate updates.', function () {
-		var done = this.async();
-		var flags = this.flags;
-		var args = ['update'];
+grunt.registerTask('certificates:update', 'Updates the Composer package responsible for root certificate updates.', function () {
+	var done = this.async();
+	var flags = this.flags;
+	var args = ['update'];
 
-		grunt.util.spawn({
-			cmd: 'composer',
-			args: args,
-			opts: { stdio: 'inherit' }
-		}, function (error) {
-			if (flags.error && error) {
-				done(false);
-			} else {
-				done(true);
-			}
-		});
-	});
-
-	grunt.registerTask('build:certificates', [
-		'concat:certificates'
-	]);
-
-	grunt.registerTask('certificates:upgrade', [
-		'certificates:update',
-		'copy:certificates',
-		'build:certificates'
-	]);
-
-	grunt.registerTask('build:files', [
-		'clean:files',
-		'copy:files',
-		'copy:block-json',
-		'copy:version',
-	]);
-
-	grunt.registerTask('replace:workflow-references-local-to-remote', [
-		'copy:workflow-references-local-to-remote',
-	]);
-
-	grunt.registerTask('replace:workflow-references-remote-to-local', [
-		'copy:workflow-references-remote-to-local',
-	]);
-
-	/**
-	 * Build verification tasks.
-	 */
-	grunt.registerTask('verify:build', [
-		'verify:old-files',
-		'verify:source-maps',
-	]);
-
-	/**
-	 * Build assertions to ensure no project files are inside `$_old_files` in the build directory.
-	 *
-	 * @ticket 36083
-	 */
-	grunt.registerTask('verify:old-files', function () {
-		const file = `${BUILD_DIR}wp-admin/includes/update-core.php`;
-
-		assert(
-			fs.existsSync(file),
-			'The build/wp-admin/includes/update-core.php file does not exist.'
-		);
-
-		const contents = fs.readFileSync(file, {
-			encoding: 'utf8',
-		});
-
-		assert(
-			contents.length > 0,
-			'The build/wp-admin/includes/update-core.php file must not be empty.'
-		);
-
-		const match = contents.match(/\$_old_files = array\(([^\)]+)\);/);
-
-		assert(
-			match.length > 0,
-			'The build/wp-admin/includes/update-core.php file does not include an `$_old_files` array.'
-		);
-
-		const files = match[1].split('\n\t').filter(function (file) {
-			// Filter out empty lines.
-			if ('' === file) {
-				return false;
-			}
-
-			// Filter out commented out lines.
-			if (0 === file.indexOf('/')) {
-				return false;
-			}
-
-			return true;
-		}).map(function (file) {
-			// Strip leading and trailing single quotes and commas.
-			return file.replace(/^\'|\',$/g, '');
-		});
-
-		files.forEach(function (file) {
-			const search = `${BUILD_DIR}${file}`;
-			assert(
-				false === fs.existsSync(search),
-				`${search} should not be present in the $_old_files array.`
-			);
-		});
-	});
-
-	/**
-	 * Compiled JavaScript files may link to sourcemaps. In some cases,
-	 * the source map may not be available, which can cause 404 errors when
-	 * browsers try to download the sourcemap from the referenced URLs.
-	 * Ensure that sourcemap links are not included in JavaScript files.
-	 *
-	 * @ticket 24994
-	 * @ticket 46218
-	 * @ticket 60348
-	 */
-	grunt.registerTask('verify:source-maps', function () {
-		const ignoredFiles = [
-			'build/wp-includes/js/dist/components.js',
-			'build/wp-includes/js/dist/data.js',
-		];
-		const files = buildFiles.reduce((acc, path) => {
-			// Skip excluded paths and any path that isn't a file.
-			if ('!' === path[0] || '**' !== path.substr(-2)) {
-				return acc;
-			}
-			acc.push(...glob.sync(`${BUILD_DIR}/${path}/*.js`));
-			return acc;
-		}, []);
-
-		assert(
-			files.length > 0,
-			'No JavaScript files found in the build directory.'
-		);
-
-		files
-			.filter(file => !ignoredFiles.includes(file))
-			.forEach(function (file) {
-				const contents = fs.readFileSync(file, {
-					encoding: 'utf8',
-				});
-				// `data:` URLs are allowed:
-				const doesNotHaveSourceMap = ! /^\/\/# sourceMappingURL=((?!data:).)/m.test(contents);
-
-				assert(
-					doesNotHaveSourceMap,
-					`The ${file} file must not contain a sourceMappingURL.`
-				);
-			});
-	});
-
-	grunt.registerTask('build', function () {
-		if (grunt.option('dev')) {
-			grunt.task.run([
-				'build:js',
-				'build:css',
-				'build:certificates'
-			]);
+	grunt.util.spawn({
+		cmd: 'composer',
+		args: args,
+		opts: { stdio: 'inherit' }
+	}, function (error) {
+		if (flags.error && error) {
+			done(false);
 		} else {
-			grunt.task.run([
-				'build:certificates',
-				'build:files',
-				'build:js',
-				'build:css',
-				'replace:source-maps',
-				'verify:build'
-			]);
+			done(true);
 		}
 	});
+});
 
-	grunt.registerTask('prerelease', [
-		'format:php:error',
-		'precommit:php',
-		'precommit:js',
-		'precommit:css',
-		'precommit:image'
-	]);
+grunt.registerTask('build:certificates', [
+	'concat:certificates'
+]);
 
-	// Testing tasks.
-	grunt.registerMultiTask('phpunit', 'Runs PHPUnit tests, including the ajax, external-http, and multisite tests.', function () {
-		var args = phpUnitWatchGroup ? this.data.args.concat(['--group', phpUnitWatchGroup]) : this.data.args;
+grunt.registerTask('certificates:upgrade', [
+	'certificates:update',
+	'copy:certificates',
+	'build:certificates'
+]);
 
-		args.unshift('test', '--');
+grunt.registerTask('build:files', [
+	'clean:files',
+	'copy:files',
+	'copy:block-json',
+	'copy:version',
+]);
 
-		grunt.util.spawn({
-			cmd: 'composer',
-			args: args,
-			opts: { stdio: 'inherit' }
-		}, this.async());
-	});
+grunt.registerTask('replace:workflow-references-local-to-remote', [
+	'copy:workflow-references-local-to-remote',
+]);
 
-	grunt.registerTask('qunit:compiled', 'Runs QUnit tests on compiled as well as uncompiled scripts.',
-		['build', 'copy:qunit', 'qunit']
+grunt.registerTask('replace:workflow-references-remote-to-local', [
+	'copy:workflow-references-remote-to-local',
+]);
+
+/**
+ * Build verification tasks.
+ */
+grunt.registerTask('verify:build', [
+	'verify:old-files',
+	'verify:source-maps',
+]);
+
+/**
+ * Build assertions to ensure no project files are inside `$_old_files` in the build directory.
+ *
+ * @ticket 36083
+ */
+grunt.registerTask('verify:old-files', function () {
+	const file = `${BUILD_DIR}wp-admin/includes/update-core.php`;
+
+	assert(
+		fs.existsSync(file),
+		'The build/wp-admin/includes/update-core.php file does not exist.'
 	);
 
-	grunt.registerTask('test', 'Runs all QUnit and PHPUnit tasks.', ['qunit:compiled', 'phpunit']);
-
-	grunt.registerTask('format:php', 'Runs the code formatter on changed files.', function () {
-		var done = this.async();
-		var flags = this.flags;
-		var args = changedFiles.php;
-
-		args.unshift('format');
-
-		grunt.util.spawn({
-			cmd: 'composer',
-			args: args,
-			opts: { stdio: 'inherit' }
-		}, function (error) {
-			if (flags.error && error) {
-				done(false);
-			} else {
-				done(true);
-			}
-		});
+	const contents = fs.readFileSync(file, {
+		encoding: 'utf8',
 	});
 
-	grunt.registerTask('lint:php', 'Runs the code linter on changed files.', function () {
-		var done = this.async();
-		var flags = this.flags;
-		var args = changedFiles.php;
+	assert(
+		contents.length > 0,
+		'The build/wp-admin/includes/update-core.php file must not be empty.'
+	);
 
-		args.unshift('lint');
+	const match = contents.match(/\$_old_files = array\(([^\)]+)\);/);
 
-		grunt.util.spawn({
-			cmd: 'composer',
-			args: args,
-			opts: { stdio: 'inherit' }
-		}, function (error) {
-			if (flags.error && error) {
-				done(false);
-			} else {
-				done(true);
-			}
-		});
-	});
+	assert(
+		match.length > 0,
+		'The build/wp-admin/includes/update-core.php file does not include an `$_old_files` array.'
+	);
 
-	grunt.registerTask('wp-packages:update', 'Update WordPress packages', function () {
-		const distTag = grunt.option('dist-tag') || 'latest';
-		grunt.log.writeln(`Updating WordPress packages (--dist-tag=${distTag})`);
-		spawn('npx', ['wp-scripts', 'packages-update', `--dist-tag=${distTag}`], {
-			cwd: __dirname,
-			stdio: 'inherit',
-		});
-	});
-
-	grunt.registerTask('browserslist:update', 'Update the local database of browser supports', function () {
-		grunt.log.writeln(`Updating browsers list`);
-		spawn('npx', ['browserslist@latest', '--update-db'], {
-			cwd: __dirname,
-			stdio: 'inherit',
-		});
-	});
-
-	grunt.registerTask('wp-packages:refresh-deps', 'Update version of dependencies in package.json to match the ones listed in the latest WordPress packages', function () {
-		const distTag = grunt.option('dist-tag') || 'latest';
-		grunt.log.writeln(`Updating versions of dependencies listed in package.json (--dist-tag=${distTag})`);
-		spawn('node', ['tools/release/sync-gutenberg-packages.js', `--dist-tag=${distTag}`], {
-			cwd: __dirname,
-			stdio: 'inherit',
-		});
-	});
-
-	grunt.registerTask('wp-packages:sync-stable-blocks', 'Refresh the PHP files referring to stable @wordpress/block-library blocks.', function () {
-		grunt.log.writeln(`Syncing stable blocks from @wordpress/block-library to src/`);
-		const { main } = require('./tools/release/sync-stable-blocks');
-		main();
-	});
-
-	// Patch task.
-	grunt.renameTask('patch_wordpress', 'patch');
-
-	// Add an alias `apply` of the `patch` task name.
-	grunt.registerTask('apply', 'patch');
-
-	// Default task.
-	grunt.registerTask('default', ['build']);
-
-	/*
-	 * Automatically updates the `:dynamic` configurations
-	 * so that only the changed files are updated.
-	 */
-	grunt.event.on('watch', function (action, filepath, target) {
-		var src;
-
-		// Only configure the dynamic tasks based on known targets.
-		if (['all', 'rtl', 'webpack', 'js-enqueues', 'js-webpack'].indexOf(target) === -1) {
-			return;
+	const files = match[1].split('\n\t').filter(function (file) {
+		// Filter out empty lines.
+		if ('' === file) {
+			return false;
 		}
 
-		// Normalize filepath for Windows.
-		filepath = filepath.replace(/\\/g, '/');
+		// Filter out commented out lines.
+		if (0 === file.indexOf('/')) {
+			return false;
+		}
 
-		// If the target is a file in the restructured js src.
+		return true;
+	}).map(function (file) {
+		// Strip leading and trailing single quotes and commas.
+		return file.replace(/^\'|\',$/g, '');
+	});
+
+	files.forEach(function (file) {
+		const search = `${BUILD_DIR}${file}`;
+		assert(
+			false === fs.existsSync(search),
+			`${search} should not be present in the $_old_files array.`
+		);
+	});
+});
+
+/**
+ * Compiled JavaScript files may link to sourcemaps. In some cases,
+ * the source map may not be available, which can cause 404 errors when
+ * browsers try to download the sourcemap from the referenced URLs.
+ * Ensure that sourcemap links are not included in JavaScript files.
+ *
+ * @ticket 24994
+ * @ticket 46218
+ * @ticket 60348
+ */
+grunt.registerTask('verify:source-maps', function () {
+	const ignoredFiles = [
+		'build/wp-includes/js/dist/components.js',
+		'build/wp-includes/js/dist/data.js',
+	];
+	const files = buildFiles.reduce((acc, path) => {
+		// Skip excluded paths and any path that isn't a file.
+		if ('!' === path[0] || '**' !== path.substr(-2)) {
+			return acc;
+		}
+		acc.push(...glob.sync(`${BUILD_DIR}/${path}/*.js`));
+		return acc;
+	}, []);
+
+	assert(
+		files.length > 0,
+		'No JavaScript files found in the build directory.'
+	);
+
+	files
+		.filter(file => !ignoredFiles.includes(file))
+		.forEach(function (file) {
+			const contents = fs.readFileSync(file, {
+				encoding: 'utf8',
+			});
+			// `data:` URLs are allowed:
+			const doesNotHaveSourceMap = ! /^\/\/# sourceMappingURL=((?!data:).)/m.test(contents);
+
+			assert(
+				doesNotHaveSourceMap,
+				`The ${file} file must not contain a sourceMappingURL.`
+			);
+		});
+});
+
+grunt.registerTask('build', function () {
+	if (grunt.option('dev')) {
+		grunt.task.run([
+			'build:js',
+			'build:css',
+			'build:certificates'
+		]);
+	} else {
+		grunt.task.run([
+			'build:certificates',
+			'build:files',
+			'build:js',
+			'build:css',
+			'replace:source-maps',
+			'verify:build'
+		]);
+	}
+});
+
+grunt.registerTask('prerelease', [
+	'format:php:error',
+	'precommit:php',
+	'precommit:js',
+	'precommit:css',
+	'precommit:image'
+]);
+
+// Testing tasks.
+grunt.registerMultiTask('phpunit', 'Runs PHPUnit tests, including the ajax, external-http, and multisite tests.', function () {
+	var args = phpUnitWatchGroup ? this.data.args.concat(['--group', phpUnitWatchGroup]) : this.data.args;
+
+	args.unshift('test', '--');
+
+	grunt.util.spawn({
+		cmd: 'composer',
+		args: args,
+		opts: { stdio: 'inherit' }
+	}, this.async());
+});
+
+grunt.registerTask('qunit:compiled', 'Runs QUnit tests on compiled as well as uncompiled scripts.',
+	['build', 'copy:qunit', 'qunit']
+);
+
+grunt.registerTask('test', 'Runs all QUnit and PHPUnit tasks.', ['qunit:compiled', 'phpunit']);
+
+grunt.registerTask('format:php', 'Runs the code formatter on changed files.', function () {
+	var done = this.async();
+	var flags = this.flags;
+	var args = changedFiles.php;
+
+	args.unshift('format');
+
+	grunt.util.spawn({
+		cmd: 'composer',
+		args: args,
+		opts: { stdio: 'inherit' }
+	}, function (error) {
+		if (flags.error && error) {
+			done(false);
+		} else {
+			done(true);
+		}
+	});
+});
+
+grunt.registerTask('lint:php', 'Runs the code linter on changed files.', function () {
+	var done = this.async();
+	var flags = this.flags;
+	var args = changedFiles.php;
+
+	args.unshift('lint');
+
+	grunt.util.spawn({
+		cmd: 'composer',
+		args: args,
+		opts: { stdio: 'inherit' }
+	}, function (error) {
+		if (flags.error && error) {
+			done(false);
+		} else {
+			done(true);
+		}
+	});
+});
+
+grunt.registerTask('wp-packages:update', 'Update WordPress packages', function () {
+	const distTag = grunt.option('dist-tag') || 'latest';
+	grunt.log.writeln(`Updating WordPress packages (--dist-tag=${distTag})`);
+	spawn('npx', ['wp-scripts', 'packages-update', `--dist-tag=${distTag}`], {
+		cwd: __dirname,
+		stdio: 'inherit',
+	});
+});
+
+grunt.registerTask('browserslist:update', 'Update the local database of browser supports', function () {
+	grunt.log.writeln(`Updating browsers list`);
+	spawn('npx', ['browserslist@latest', '--update-db'], {
+		cwd: __dirname,
+		stdio: 'inherit',
+	});
+});
+
+grunt.registerTask('wp-packages:refresh-deps', 'Update version of dependencies in package.json to match the ones listed in the latest WordPress packages', function () {
+	const distTag = grunt.option('dist-tag') || 'latest';
+	grunt.log.writeln(`Updating versions of dependencies listed in package.json (--dist-tag=${distTag})`);
+	spawn('node', ['tools/release/sync-gutenberg-packages.js', `--dist-tag=${distTag}`], {
+		cwd: __dirname,
+		stdio: 'inherit',
+	});
+});
+
+grunt.registerTask('wp-packages:sync-stable-blocks', 'Refresh the PHP files referring to stable @wordpress/block-library blocks.', function () {
+	grunt.log.writeln(`Syncing stable blocks from @wordpress/block-library to src/`);
+	const { main } = require('./tools/release/sync-stable-blocks');
+	main();
+});
+
+// Patch task.
+grunt.renameTask('patch_wordpress', 'patch');
+
+// Add an alias `apply` of the `patch` task name.
+grunt.registerTask('apply', 'patch');
+
+// Default task.
+grunt.registerTask('default', ['build']);
+
+/*
+ * Automatically updates the `:dynamic` configurations
+ * so that only the changed files are updated.
+ */
+grunt.event.on('watch', function (action, filepath, target) {
+	var src;
+
+	// Only configure the dynamic tasks based on known targets.
+	if (['all', 'rtl', 'webpack', 'js-enqueues', 'js-webpack'].indexOf(target) === -1) {
+		return;
+	}
+
+	// Normalize filepath for Windows.
+	filepath = filepath.replace(/\\/g, '/');
+
+	// If the target is a file in the restructured js src.
+	if (target === 'js-enqueues') {
+		var files = {};
+		var configs, dest;
+
+		// If it's a vendor file which are configured with glob matchers.
+		if (filepath.indexOf(SOURCE_DIR + 'js/_enqueues/vendor/') === 0) {
+			// Grab the glob matchers from the copy task.
+			configs = grunt.config(['copy', 'vendor-js', 'files']);
+
+			// For each glob matcher check if it matches and if so set the variables for our dynamic tasks.
+			for (var i = 0; i < configs.length; i++) {
+				var config = configs[i];
+				var relative = path.relative(config.cwd, filepath);
+				var minimatch = require('minimatch');
+
+				if (minimatch.match(config.src, relative, {})) {
+					dest = config.dest + relative;
+					src = [path.relative(WORKING_DIR, dest)];
+					files[dest] = [filepath];
+					break;
+				}
+			}
+			// Or if it's another file which has a straight mapping.
+		} else {
+			configs = Object.assign({},
+				grunt.config(['copy', 'admin-js', 'files']),
+				grunt.config(['copy', 'includes-js', 'files'])
+			);
+
+			for (dest in configs) {
+				// If a file in the mapping matches then set the variables for our dynamic tasks.
+				if (dest && configs.hasOwnProperty(dest) && configs[dest][0] === './' + filepath) {
+					files[dest] = configs[dest];
+					src = [path.relative(WORKING_DIR, dest)];
+					break;
+				}
+			}
+		}
+
+		// Configure our dynamic-js copy task which uses a file mapping rather than simply copying from src to build.
+		if (action !== 'deleted') {
+			grunt.config(['copy', 'dynamic-js', 'files'], files);
+		}
+		// For the webpack builds configure the task to only check those files built by webpack.
+	} else if (target === 'js-webpack') {
+		src = [
+			'wp-includes/js/media-audiovideo.js',
+			'wp-includes/js/media-grid.js',
+			'wp-includes/js/media-models.js',
+			'wp-includes/js/media-views.js'
+		];
+		// Else simply use the path relative to the source directory.
+	} else {
+		src = [path.relative(SOURCE_DIR, filepath)];
+	}
+
+	if (!src) {
+		grunt.warn('Failed to determine the destination file.');
+		return;
+	}
+
+	if (action === 'deleted') {
+		// Clean up only those files that were deleted.
+		grunt.config(['clean', 'dynamic', 'src'], src);
+	} else {
+		if (!grunt.option('dev')) {
+			// Otherwise copy over only the changed file.
+			grunt.config(['copy', 'dynamic', 'src'], src);
+		}
+
+		// For javascript also minify and validate the changed file.
 		if (target === 'js-enqueues') {
-			var files = {};
-			var configs, dest;
-
-			// If it's a vendor file which are configured with glob matchers.
-			if (filepath.indexOf(SOURCE_DIR + 'js/_enqueues/vendor/') === 0) {
-				// Grab the glob matchers from the copy task.
-				configs = grunt.config(['copy', 'vendor-js', 'files']);
-
-				// For each glob matcher check if it matches and if so set the variables for our dynamic tasks.
-				for (var i = 0; i < configs.length; i++) {
-					var config = configs[i];
-					var relative = path.relative(config.cwd, filepath);
-					var minimatch = require('minimatch');
-
-					if (minimatch.match(config.src, relative, {})) {
-						dest = config.dest + relative;
-						src = [path.relative(WORKING_DIR, dest)];
-						files[dest] = [filepath];
-						break;
-					}
-				}
-				// Or if it's another file which has a straight mapping.
-			} else {
-				configs = Object.assign({},
-					grunt.config(['copy', 'admin-js', 'files']),
-					grunt.config(['copy', 'includes-js', 'files'])
-				);
-
-				for (dest in configs) {
-					// If a file in the mapping matches then set the variables for our dynamic tasks.
-					if (dest && configs.hasOwnProperty(dest) && configs[dest][0] === './' + filepath) {
-						files[dest] = configs[dest];
-						src = [path.relative(WORKING_DIR, dest)];
-						break;
-					}
-				}
-			}
-
-			// Configure our dynamic-js copy task which uses a file mapping rather than simply copying from src to build.
-			if (action !== 'deleted') {
-				grunt.config(['copy', 'dynamic-js', 'files'], files);
-			}
-			// For the webpack builds configure the task to only check those files built by webpack.
-		} else if (target === 'js-webpack') {
-			src = [
-				'wp-includes/js/media-audiovideo.js',
-				'wp-includes/js/media-grid.js',
-				'wp-includes/js/media-models.js',
-				'wp-includes/js/media-views.js'
-			];
-			// Else simply use the path relative to the source directory.
-		} else {
-			src = [path.relative(SOURCE_DIR, filepath)];
+			grunt.config(['uglify', 'dynamic', 'src'], src);
+			grunt.config(['dynamic', 'files', 'src'], src.map(function (dir) { return WORKING_DIR + dir; }));
 		}
-
-		if (!src) {
-			grunt.warn('Failed to determine the destination file.');
-			return;
+		// For webpack only validate the file, minification is handled by webpack itself.
+		if (target === 'js-webpack') {
+			grunt.config(['dynamic', 'files', 'src'], src.map(function (dir) { return WORKING_DIR + dir; }));
 		}
-
-		if (action === 'deleted') {
-			// Clean up only those files that were deleted.
-			grunt.config(['clean', 'dynamic', 'src'], src);
-		} else {
-			if (!grunt.option('dev')) {
-				// Otherwise copy over only the changed file.
-				grunt.config(['copy', 'dynamic', 'src'], src);
-			}
-
-			// For javascript also minify and validate the changed file.
-			if (target === 'js-enqueues') {
-				grunt.config(['uglify', 'dynamic', 'src'], src);
-				grunt.config(['dynamic', 'files', 'src'], src.map(function (dir) { return WORKING_DIR + dir; }));
-			}
-			// For webpack only validate the file, minification is handled by webpack itself.
-			if (target === 'js-webpack') {
-				grunt.config(['dynamic', 'files', 'src'], src.map(function (dir) { return WORKING_DIR + dir; }));
-			}
-			// For css run the rtl task on just the changed file.
-			if (target === 'rtl') {
-				grunt.config(['rtlcss', 'dynamic', 'src'], src);
-			}
+		// For css run the rtl task on just the changed file.
+		if (target === 'rtl') {
+			grunt.config(['rtlcss', 'dynamic', 'src'], src);
 		}
-	});
+	}
+});
 };
