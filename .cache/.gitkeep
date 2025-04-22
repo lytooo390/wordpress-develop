@@ -1,0 +1,10 @@
+/* This file is intentionally left blank to ensure the .cache directory is tracked by Git. */
+// This file is part of the project to ensure that the .cache directory is included in version control.
+// It is used to store cached data for the application.
+// This is a placeholder file to keep the directory in version control.
+// You can add any relevant information or instructions here if needed.
+// For example:
+// This directory is used for caching purposes.
+// Do not delete this file unless you are sure you no longer need the cache.
+// You can clear the cache by deleting the contents of this directory.
+// Make sure to add any necessary files or directories to .gitignore if they should not be tracked by Git.

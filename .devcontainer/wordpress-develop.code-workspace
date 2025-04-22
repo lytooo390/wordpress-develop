@@ -2,6 +2,9 @@
 	"folders": [
 		{
 			"path": ".."
+		},
+		{
+			"path": "../tests/e2e/specs"
 		}
 	],
 	"settings": {}
