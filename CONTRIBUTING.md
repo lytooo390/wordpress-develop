@@ -1,4 +1,4 @@
-# Welcome to WordPress Development!
+# Welcome to WordPress Development
 
 For the in-depth documentation, please visit the [Contributor Handbook](https://make.wordpress.org/core/handbook/contribute/).
 
